@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  status      String      @default("active")
+  ownerId     String
+  settings    Json?
+  bids        Bid[]
+  categories  Category[]
+  analyses    Analysis[]
+
+  @@map("projects")
+}
+
+model Contractor {
+  id          String   @id @default(uuid())
+  name        String
+  contactInfo Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  bids        Bid[]
+
+  @@map("contractors")
+}
+
+model Bid {
+  id              String     @id @default(uuid())
+  projectId       String
+  contractorId    String
+  submissionDate  DateTime   @default(now())
+  status          String     @default("pending")
+  filePath        String?
+  originalFilename String?
+  processedData   Json?
+  project         Project    @relation(fields: [projectId], references: [id])
+  contractor      Contractor @relation(fields: [contractorId], references: [id])
+  bidItems        BidItem[]
+
+  @@unique([projectId, contractorId])
+  @@map("bids")
+}
+
+model Category {
+  id             String     @id @default(uuid())
+  projectId      String
+  name           String
+  normalizedName String
+  createdAt      DateTime   @default(now())
+  parentId       String?
+  parent         Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children       Category[] @relation("CategoryHierarchy")
+  project        Project    @relation(fields: [projectId], references: [id])
+  bidItems       BidItem[]
+  analyses       Analysis[]
+
+  @@unique([projectId, normalizedName])
+  @@map("categories")
+}
+
+model BidItem {
+  id         String   @id @default(uuid())
+  bidId      String
+  categoryId String
+  price      Decimal
+  notes      String?
+  flags      Json?
+  createdAt  DateTime @default(now())
+  bid        Bid      @relation(fields: [bidId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([bidId, categoryId])
+  @@map("bid_items")
+}
+
+model Analysis {
+  id             String   @id @default(uuid())
+  projectId      String
+  categoryId     String
+  benchmarkPrice Decimal?
+  stats          Json?
+  flags          Json?
+  createdAt      DateTime @default(now())
+  project        Project  @relation(fields: [projectId], references: [id])
+  category       Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([projectId, categoryId])
+  @@map("analyses")
+} 
